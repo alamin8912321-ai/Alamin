@@ -1,0 +1,1406 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BCFS Media</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        body { background: #f0f2f5; color: #050505; }
+        
+        #login-section { display: none; text-align: center; padding: 40px 20px; background: #fff; height: 100vh; }
+        .login-card { max-width: 360px; margin: 40px auto; padding: 25px; background: #fff; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .login-card h2 { color: #1877f2; margin-bottom: 20px; font-size: 28px; }
+        .auth-box { display: flex; flex-direction: column; gap: 12px; }
+        .auth-box input, .auth-box select { padding: 14px; border: 1px solid #ccd0d5; border-radius: 6px; font-size: 16px; background: #f5f6f7; outline: none; }
+        .auth-btn { padding: 12px; border: none; border-radius: 6px; cursor: pointer; color: white; font-weight: bold; font-size: 16px; background: #1877f2; }
+        .auth-switch { margin-top: 15px; font-size: 14px; color: #65676b; cursor: pointer; }
+        .auth-switch span { color: #1877f2; font-weight: bold; }
+
+        #app-section { display: none; max-width: 600px; margin: 0 auto; background: #f0f2f5; min-height: 100vh; padding-bottom: 70px; }
+        
+        #offline-notice { background-color: #ffebe8; color: #c93b2b; padding: 10px; text-align: center; display: none; font-weight: bold; font-size: 13px; border-bottom: 1px solid #f0cbd0; }
+
+        .top-nav-tabs { display: flex; background: white; border-bottom: 1px solid #dadde1; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .top-nav-tab { cursor: pointer; flex: 1; text-align: center; padding: 14px 0; font-size: 22px; color: #65676b; transition: 0.2s; border-bottom: 3px solid transparent; }
+        .top-nav-tab.active { color: #1877f2; border-bottom: 3px solid #1877f2; }
+
+        .post-box-fb { background: white; padding: 12px 15px; margin-top: 8px; margin-bottom: 8px; border-top: 1px solid #dadde1; border-bottom: 1px solid #dadde1; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .post-box-inner { display: flex; gap: 10px; align-items: center; }
+        .post-input-fake { flex: 1; background: #f0f2f5; padding: 12px 15px; border-radius: 20px; color: #050505; cursor: pointer; font-size: 15px; border: 1px solid #ccd0d5; font-weight: 500; }
+        
+        .stories-container { display: flex; gap: 8px; padding: 10px 15px; background: white; margin-bottom: 8px; overflow-x: auto; border-bottom: 1px solid #dadde1; }
+        .story-card { width: 90px; height: 150px; border-radius: 10px; background: #e4e6eb; flex-shrink: 0; position: relative; cursor: pointer; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; padding: 8px; background-size: cover; background-position: center; border: 1px solid #ccd0d5; }
+        .story-card.add-story { background: white; justify-content: center; align-items: center; color: #1877f2; font-weight: bold; text-align: center; font-size: 12px; }
+        .story-card.add-story i { font-size: 20px; background: #e7f3ff; padding: 10px; border-radius: 50%; margin-bottom: 5px; }
+        .story-user { color: white; font-size: 12px; font-weight: bold; text-shadow: 0 1px 3px rgba(0,0,0,0.8); z-index: 2; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px; }
+        .story-delete-btn { position: absolute; top: 5px; right: 5px; background: rgba(250, 56, 62, 0.8); color: white; border: none; border-radius: 50%; width: 24px; height: 24px; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 10; }
+        .story-delete-btn:hover { background: #fa383e; }
+
+        .post { background: white; margin-bottom: 8px; border-top: 1px solid #dadde1; border-bottom: 1px solid #dadde1; padding: 12px 15px 0 15px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .post-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+        .post-header-left { display: flex; align-items: center; gap: 10px; }
+        
+        .post-menu-container { position: relative; }
+        .post-menu-btn { background: none; border: none; font-size: 18px; color: #65676b; cursor: pointer; padding: 5px 10px; border-radius: 50%; }
+        .post-menu-btn:hover { background: #f0f2f5; }
+        .post-menu-dropdown { display: none; position: absolute; right: 0; top: 30px; background: white; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: 1px solid #dadde1; z-index: 50; width: 150px; overflow: hidden; }
+        .post-menu-item { padding: 10px 14px; font-size: 14px; font-weight: bold; color: #050505; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+        .post-menu-item:hover { background: #f0f2f5; }
+        .post-menu-item.delete { color: #fa383e; }
+
+        .avatar-wrapper { position: relative; display: inline-block; cursor: pointer; }
+        .avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: #e4e6eb; display: flex; align-items: center; justify-content: center; color: #65676b; font-weight: bold; flex-shrink: 0; overflow: hidden; }
+        .avatar img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .status-dot { width: 11px; height: 11px; border-radius: 50%; border: 2px solid white; position: absolute; bottom: 0; right: 0; }
+        .status-dot.online { background: #31a24c; }
+        .status-dot.offline { background: #8a8d91; }
+
+        .post-meta { display: flex; flex-direction: column; }
+        .post-author-name { font-weight: bold; font-size: 15px; color: #050505; display: flex; align-items: center; gap: 4px; cursor: pointer; }
+        .post-author-name:hover { text-decoration: underline; }
+        .post-time { font-size: 12px; color: #65676b; }
+        
+        .verified-badge { color: #1877f2; font-size: 13px; margin-left: 2px; }
+        .mod-badge { background: #28a745; color: white; font-size: 10px; font-weight: bold; padding: 1px 5px; border-radius: 4px; margin-left: 4px; display: inline-block; }
+
+        .post-text { margin-bottom: 8px; font-size: 15px; line-height: 1.4; word-break: break-word; }
+        .post-image-container { margin: 0 -15px 8px -15px; max-height: 400px; overflow: hidden; background: #000; display: flex; align-items: center; justify-content: center; }
+        .post-image-container img { width: 100%; max-height: 400px; object-fit: cover; }
+        
+        .post-stats { display: flex; justify-content: space-between; padding: 8px 0; font-size: 13px; color: #65676b; border-bottom: 1px solid #e4e6eb; align-items: center; }
+        .post-actions { display: flex; justify-content: space-around; padding: 4px 0; border-bottom: 1px solid #dadde1; position: relative; }
+        .action-btn { flex: 1; text-align: center; padding: 8px; color: #65676b; font-weight: bold; font-size: 14px; cursor: pointer; border-radius: 4px; display: flex; align-items: center; justify-content: center; gap: 6px; position: relative; user-select: none; }
+        .action-btn:hover { background: #f0f2f5; }
+
+        .reactions-popup { display: none; position: absolute; bottom: 45px; left: 10px; background: white; border-radius: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); padding: 6px 10px; gap: 6px; z-index: 100; border: 1px solid #dadde1; }
+        .reaction-icon-opt { font-size: 22px; cursor: pointer; transition: transform 0.2s; }
+        .reaction-icon-opt:hover { transform: scale(1.3); }
+
+        .comments-section { padding: 8px 0; display: none; }
+        .comments-list { max-height: 200px; overflow-y: auto; margin-bottom: 8px; display: flex; flex-direction: column; gap: 6px; }
+        .comment-item { background: #f0f2f5; padding: 8px 12px; border-radius: 18px; font-size: 13px; display: inline-block; max-width: 85%; color: #050505; }
+        .comment-author { font-weight: bold; color: #050505; margin-bottom: 2px; display: flex; align-items: center; gap: 4px; cursor: pointer; }
+        .comment-box-row { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+        .comment-input { flex: 1; background: #f0f2f5; border: 1px solid #ccd0d5; padding: 8px 12px; border-radius: 20px; font-size: 13px; outline: none; }
+        .comment-send-btn { background: none; border: none; color: #1877f2; font-weight: bold; cursor: pointer; font-size: 14px; padding: 4px 8px; }
+
+        .profile-header-bg { background: white; margin-bottom: 8px; border-bottom: 1px solid #dadde1; }
+        .cover-photo { height: 160px; background: #e4e6eb; background-size: cover; background-position: center; position: relative; }
+        
+        .profile-info-section { padding: 75px 15px 15px 15px; text-align: center; position: relative; }
+        .profile-avatar-large-wrapper { position: relative; display: inline-block; width: 130px; height: 130px; position: absolute; top: -65px; left: 50%; transform: translateX(-50%); z-index: 5; }
+        .profile-avatar-large { width: 100%; height: 100%; border-radius: 50%; border: 4px solid white; background: #e4e6eb; display: flex; align-items: center; justify-content: center; font-size: 45px; color: #65676b; object-fit: cover; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden; }
+        .profile-avatar-large img { width: 100%; height: 100%; object-fit: cover; }
+        .profile-avatar-large-wrapper .status-dot { width: 20px; height: 20px; border: 3px solid white; bottom: 5px; right: 5px; }
+        
+        .profile-name-row { display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 5px; flex-wrap: wrap; }
+        .profile-name { font-size: 22px; font-weight: bold; color: #050505; }
+        .profile-username { font-size: 13px; color: #1877f2; font-weight: 600; margin-top: 2px; background: #e7f3ff; display: inline-block; padding: 2px 8px; border-radius: 12px; }
+        .profile-status-text { font-size: 13px; font-weight: bold; margin-top: 4px; }
+        .profile-bio { font-size: 14px; color: #65676b; margin-top: 6px; word-break: break-word; }
+        .profile-stats-counts { font-size: 14px; font-weight: bold; color: #050505; margin-top: 8px; }
+        
+        .profile-action-buttons { display: flex; gap: 8px; padding: 12px 15px; background: white; border-bottom: 1px solid #dadde1; justify-content: center; }
+        .fb-main-btn { flex: 1; padding: 10px; border: none; border-radius: 6px; font-weight: bold; font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .btn-blue { background: #1877f2; color: white; }
+        .btn-gray { background: #e4e6eb; color: #050505; }
+
+        .admin-panel { background: white; padding: 15px; margin: 8px 10px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #dadde1; text-align: left; }
+        .admin-panel h3 { font-size: 16px; margin-bottom: 10px; color: #1877f2; border-bottom: 1px solid #e4e6eb; padding-bottom: 6px; }
+        .admin-panel p { font-size: 13px; color: #65676b; margin-bottom: 6px; word-break: break-all; }
+        .admin-btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+        .admin-btn { padding: 10px; border: none; border-radius: 6px; font-weight: bold; color: white; cursor: pointer; font-size: 13px; text-align: center; }
+        .btn-badge-give { background: #0088cc; }
+        .btn-badge-take { background: #fa383e; }
+        .btn-mod-give { background: #28a745; }
+        .btn-mod-take { background: #dc3545; }
+
+        .settings-container { background: white; padding: 15px; margin: 10px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .settings-item { padding: 12px 0; border-bottom: 1px solid #e4e6eb; font-weight: bold; color: #050505; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-size: 15px; }
+        .settings-item span { display: flex; align-items: center; gap: 10px; }
+        .logout-btn-full { background: #fa383e; border: none; padding: 12px; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; width: 100%; font-size: 16px; margin-top: 15px; }
+
+        .chat-box-container { display: flex; flex-direction: column; height: calc(100vh - 70px); background: #ffffff; margin: 0; box-shadow: none; overflow: hidden; }
+        .chat-header-bar { padding: 12px 16px; background: #ffffff; color: #050505; font-weight: bold; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #dadde1; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .chat-header-left { display: flex; align-items: center; gap: 10px; }
+        .chat-messages { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background: #ffffff; }
+        
+        .chat-bubble-wrapper { display: flex; flex-direction: column; max-width: 75%; }
+        .chat-bubble-wrapper.incoming { align-self: flex-start; }
+        .chat-bubble-wrapper.outgoing { align-self: flex-end; }
+
+        .chat-bubble { padding: 10px 14px; border-radius: 18px; font-size: 14.5px; word-break: break-word; line-height: 1.4; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .chat-bubble.incoming { background: #f0f2f5; color: #050505; border-top-left-radius: 4px; }
+        .chat-bubble.outgoing { background: #0084ff; color: white; border-top-right-radius: 4px; }
+        
+        .chat-input-row { display: flex; padding: 10px 16px; background: #ffffff; border-top: 1px solid #dadde1; gap: 10px; align-items: center; }
+        .chat-text-input { flex: 1; padding: 10px 16px; border: 1px solid #ccd0d5; border-radius: 20px; outline: none; font-size: 14.5px; background: #f0f2f5; transition: background 0.2s; }
+        .chat-text-input:focus { background: #ffffff; border-color: #0084ff; }
+        .chat-send-icon-btn { background: none; border: none; color: #0084ff; font-size: 20px; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; }
+        .chat-send-icon-btn:hover { transform: scale(1.1); }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: white; padding: 20px; width: 92%; max-width: 420px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+        .modal-content textarea { width: 100%; border: 1px solid #ccd0d5; padding: 10px; margin-bottom: 12px; border-radius: 6px; font-size: 15px; resize: none; }
+        .modal-content input[type="text"], .modal-content input[type="password"], .modal-content input[type="email"], .modal-content select { width: 100%; padding: 10px; border: 1px solid #ccd0d5; border-radius: 6px; margin-bottom: 12px; }
+        .file-input-label { display: block; background: #e7f3ff; color: #1877f2; text-align: center; padding: 10px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-bottom: 12px; font-size: 14px; border: 1px dashed #1877f2; }
+    </style>
+</head>
+<body>
+
+    <div id="offline-notice">⚠️ আপনি বর্তমানে অফলাইনে আছেন! লোকাল স্টোরেজ থেকে পূর্বের পোস্টগুলো দেখানো হচ্ছে।</div>
+
+    <div id="login-section">
+        <div class="login-card">
+            <h2 id="auth-title">BCFS Media - লগইন</h2>
+            <div class="auth-box">
+                <input type="text" id="auth-name" placeholder="আপনার নাম" style="display:none;">
+                <select id="auth-gender" style="display:none;">
+                    <option value="male">পুরুষ (Male)</option>
+                    <option value="female">মহিলা (Female)</option>
+                </select>
+                <input type="email" id="auth-email" placeholder="ইমেল ঠিকানা">
+                <input type="password" id="auth-pass" placeholder="পাসওয়ার্ড">
+                <button class="auth-btn" id="auth-main-btn" onclick="handleAuthSubmit()">লগইন করুন</button>
+                <div class="auth-switch" id="auth-switch-text" onclick="toggleAuthMode()">একাউন্ট নেই? <span>সাইন আপ (রেজিস্ট্রেশন) করুন</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-section">
+        <div class="top-nav-tabs">
+            <div class="top-nav-tab active" onclick="switchTab('tab-home', this)" title="হোম"><i class="fa-solid fa-house"></i></div>
+            <div class="top-nav-tab" onclick="openMyProfile()" title="প্রোফাইল"><i class="fa-solid fa-user"></i></div>
+            <div class="top-nav-tab" onclick="switchTab('tab-settings', this)" title="সেটিংস"><i class="fa-solid fa-gear"></i></div>
+        </div>
+
+        <div id="tab-home" class="tab-content">
+            <div class="post-box-fb">
+                <div class="post-box-inner" onclick="openCreatePostModal()">
+                    <div class="avatar-wrapper">
+                        <div class="avatar" id="home-user-avatar-icon"><i class="fa-solid fa-user"></i></div>
+                        <div class="status-dot online"></div>
+                    </div>
+                    <div class="post-input-fake">মনে কি চলছে বলুন তো...</div>
+                </div>
+            </div>
+
+            <div class="stories-container" id="stories-feed">
+                <div class="story-card add-story" onclick="openCreateStoryModal()">
+                    <i class="fa-solid fa-plus"></i>
+                    স্টোরি দিন
+                </div>
+            </div>
+            
+            <div id="feed-home"></div>
+        </div>
+
+        <div id="tab-profile" class="tab-content" style="display:none;">
+            <div class="profile-header-bg">
+                <div class="cover-photo" id="profile-cover-bg"></div>
+                <div class="profile-info-section">
+                    <div class="profile-avatar-large-wrapper">
+                        <div class="profile-avatar-large" id="profile-avatar-container"><i class="fa-solid fa-user"></i></div>
+                        <div class="status-dot" id="profile-status-dot"></div>
+                    </div>
+                    
+                    <div class="profile-name-row">
+                        <div class="profile-name" id="profile-display-name">User Name</div>
+                        <span id="profile-verified-span"></span>
+                        <span id="profile-mod-span"></span>
+                    </div>
+                    <div class="profile-username" id="profile-display-username">@UID</div>
+                    <div class="profile-status-text" id="profile-status-label">অফলাইন</div>
+                    <div class="profile-bio" id="profile-display-bio"></div>
+                    <div class="profile-stats-counts">654K Followers &nbsp;&nbsp; 120 Friends</div>
+                </div>
+            </div>
+
+            <div class="profile-action-buttons" id="profile-action-buttons-container"></div>
+            
+            <div id="admin-control-panel" class="admin-panel" style="display: none;">
+                <h3>অ্যাডমিন কন্ট্রোল প্যানেল (রোল ম্যানেজমেন্ট)</h3>
+                <p>ইউজার UID: <b id="current-profile-uid-text" style="color: #1877f2;"></b></p>
+                <div class="admin-btn-grid">
+                    <button class="admin-btn btn-badge-give" onclick="updateProfileUserBadge(true)">ব্লু ব্যাজ দিন</button>
+                    <button class="admin-btn btn-badge-take" onclick="updateProfileUserBadge(false)">ব্লু ব্যাজ কাটুন</button>
+                    <button class="admin-btn btn-mod-give" onclick="updateProfileUserModerator(true)">মডারেটর করুন</button>
+                    <button class="admin-btn btn-mod-take" onclick="updateProfileUserModerator(false)">মডারেটর হাটান</button>
+                </div>
+            </div>
+
+            <div style="padding: 10px 15px; font-weight: bold; color: #65676b; margin-top: 5px;">পোস্টসমূহ</div>
+            <div id="feed-profile"></div>
+        </div>
+
+        <div id="tab-settings" class="tab-content" style="display:none;">
+            <div class="settings-container">
+                <div class="settings-item" onclick="openSettingsShortsModal()">
+                    <span><i class="fa-brands fa-youtube" style="color: #ff0000; font-size: 18px;"></i> ইউটিউব শর্টস ভিডিও ফিড</span>
+                    <i class="fa-solid fa-chevron-right" style="font-size: 12px; color: #65676b;"></i>
+                </div>
+                <div id="admin-mod-chat-option" class="settings-item" style="display:none;" onclick="openAdminModChatList()">
+                    <span><i class="fa-solid fa-comments" style="color: #1877f2;"></i> ইউজার চ্যাট প্যানেল (মডারেটর/অ্যাডমিন)</span>
+                    <i class="fa-solid fa-chevron-right" style="font-size: 12px; color: #65676b;"></i>
+                </div>
+                <div class="settings-item" onclick="openPasswordModal()">
+                    <span><i class="fa-solid fa-lock" style="color: #28a745;"></i> পাসওয়ার্ড পরিবর্তন</span>
+                    <i class="fa-solid fa-chevron-right" style="font-size: 12px; color: #65676b;"></i>
+                </div>
+                <div class="settings-item" onclick="toggleNotifications()">
+                    <span><i class="fa-solid fa-bell" style="color: #f7b125;"></i> নোটিফিকেশন</span>
+                    <span id="notif-status" style="font-size: 13px; color: #28a745;">চালু</span>
+                </div>
+                <div class="settings-item" onclick="togglePrivacy()">
+                    <span><i class="fa-solid fa-shield" style="color: #0088cc;"></i> অ্যাকাউন্ট প্রাইভেসি</span>
+                    <span id="privacy-status" style="font-size: 13px; color: #65676b;">পাবলিক</span>
+                </div>
+                <button class="logout-btn-full" onclick="logoutUser()">লগআউট করুন</button>
+            </div>
+        </div>
+
+        <div id="tab-live-chat" class="tab-content" style="display:none;">
+            <div class="chat-box-container">
+                <div class="chat-header-bar">
+                    <div class="chat-header-left">
+                        <i class="fa-solid fa-arrow-left" style="cursor: pointer; font-size: 18px; color: #65676b;" onclick="switchTab('tab-home', document.querySelector('.top-nav-tab:nth-child(1))'))"></i>
+                        <span id="chat-header-title" style="font-size: 16px;">প্রাইভেট চ্যাট</span>
+                    </div>
+                    <i class="fa-solid fa-circle-info" style="color: #65676b; font-size: 18px; cursor: pointer;"></i>
+                </div>
+                <div class="chat-messages" id="chat-messages-list"></div>
+                <div class="chat-input-row">
+                    <input type="text" class="chat-text-input" id="chat-message-input" placeholder="Aa মেসেজ লিখুন...">
+                    <button class="chat-send-icon-btn" onclick="sendLiveMessage()"><i class="fa-solid fa-paper-plane"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- স্টোরি ভিউয়ার -->
+    <div id="storyViewerModal" class="modal" style="display:none;">
+        <div class="modal-content" style="text-align: center; background: #000; color: #fff; border-radius: 12px; padding: 15px; max-width: 350px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <div id="story-viewer-user-profile" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <img id="story-viewer-author-avatar" style="width: 35px; height: 35px; border-radius: 50%; object-fit: cover;">
+                    <span id="story-viewer-author-name" style="font-weight: bold; font-size: 14px;"></span>
+                </div>
+                <i class="fa-solid fa-xmark" style="font-size: 20px; cursor: pointer;" onclick="closeStoryViewer()"></i>
+            </div>
+            
+            <div id="story-viewer-bg-img" style="width: 100%; height: 350px; background-size: cover; background-position: center; border-radius: 8px; margin-bottom: 10px;"></div>
+        </div>
+    </div>
+
+    <!-- সেটিংস থেকে ইউটিউব শর্টস ফুল স্ক্রিন স্ক্রলেবল ফিড (ইউটিউব ফিচারসহ) -->
+    <div id="settingsShortsModal" class="modal">
+        <div class="modal-content" style="background: #000; color: #fff; max-width: 100%; width: 100%; height: 100%; border-radius: 0; padding: 0; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; z-index: 2000;">
+            
+            <!-- টপ হেডার বার -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: rgba(0,0,0,0.8); position: absolute; top: 0; left: 0; width: 100%; z-index: 20; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                <span style="font-weight: bold; font-size: 16px; color: #ff0000; display: flex; align-items: center; gap: 6px;"><i class="fa-brands fa-youtube"></i> ইউটিউব শর্টস ফিড</span>
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <button onclick="openCreateShortsModal()" style="background: #ff0000; color: white; border: none; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 13px; cursor: pointer;"><i class="fa-solid fa-plus"></i> ক্রিয়েট শর্ট</button>
+                    <i class="fa-solid fa-xmark" style="font-size: 20px; cursor: pointer; color: #fff; background: rgba(255,255,255,0.2); width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center;" onclick="document.getElementById('settingsShortsModal').style.display='none'"></i>
+                </div>
+            </div>
+
+            <!-- শর্টস স্ক্রলেবল লিস্ট কন্টেইনার -->
+            <div id="settings-shorts-list-container" style="flex: 1; overflow-y: scroll; scroll-snap-type: y mandatory; height: 100vh; width: 100vw; background: #000;">
+                <!-- ডাইনামিক ইউটিউব শর্টস লোড হবে -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ইউটিউব শর্টস কমেন্ট দেখার বা লেখার মডাল -->
+    <div id="ytCommentsModal" class="modal">
+        <div class="modal-content" style="background: #242526; color: #fff; border-radius: 12px 12px 0 0; position: fixed; bottom: 0; width: 100%; max-width: 600px; padding: 15px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #3a3b3c; padding-bottom: 8px;">
+                <h4 style="font-size: 15px;">কমেন্টস</h4>
+                <i class="fa-solid fa-xmark" style="cursor: pointer; font-size: 18px;" onclick="document.getElementById('ytCommentsModal').style.display='none'"></i>
+            </div>
+            <div id="yt-comments-list-box" style="max-height: 200px; overflow-y: auto; margin-bottom: 10px; font-size: 13px; display: flex; flex-direction: column; gap: 8px;">
+                <div style="color: #b0b3b8;">কোনো কমেন্ট নেই। প্রথম কমেন্ট করুন!</div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <input type="text" id="yt-comment-input" placeholder="পাবলিক কমেন্ট যোগ করুন..." style="flex: 1; background: #3a3b3c; border: none; border-radius: 20px; padding: 10px 14px; color: #fff; font-size: 13px; outline: none;">
+                <button onclick="postYtComment()" style="background: #3ea6ff; color: #000; border: none; padding: 0 15px; border-radius: 20px; font-weight: bold; cursor: pointer;">পাঠান</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- নতুন শর্টস ক্রিয়েট করার মডাল -->
+    <div id="createShortsModal" class="modal">
+        <div class="modal-content" style="background: #242526; color: #fff;">
+            <h3 style="margin-bottom: 12px; text-align: center; color: #ff0000;"><i class="fa-brands fa-youtube"></i> ইউটিউব শর্ট আপলোড করুন</h3>
+            <label style="font-size: 13px; color: #b0b3b8; font-weight: bold;">ইউটিউব শর্ট ভিডিও লিংক (Embed ID):</label>
+            <input type="text" id="new-short-id-input" placeholder="যেমন: dQw4w9WgXcQ" style="background: #3a3b3c; color: #fff; border: 1px solid #4e4f50;">
+            <label style="font-size: 13px; color: #b0b3b8; font-weight: bold;">ক্যাপশন:</label>
+            <input type="text" id="new-short-caption-input" placeholder="ভিডিও সম্পর্কে কিছু লিখুন..." style="background: #3a3b3c; color: #fff; border: 1px solid #4e4f50;">
+            <div style="display: flex; gap: 10px; margin-top: 5px;">
+                <button onclick="document.getElementById('createShortsModal').style.display='none'" style="flex:1; padding:10px; background:#3a3b3c; color:#fff; border:none; border-radius:6px; font-weight:bold;">বাতিল</button>
+                <button onclick="saveNewShortsVideo()" style="flex:1; padding:10px; background:#ff0000; color:white; border:none; border-radius:6px; font-weight:bold;">পোস্ট করুন</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Password Change Modal -->
+    <div id="passwordModal" class="modal">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 12px; text-align: center;">পাসওয়ার্ড পরিবর্তন করুন</h3>
+            <label style="font-size: 13px; color: #65676b; font-weight: bold;">পুরাতন পাসওয়ার্ড:</label>
+            <input type="password" id="old-pass-input">
+            <label style="font-size: 13px; color: #65676b; font-weight: bold;">নতুন পাসওয়ার্ড:</label>
+            <input type="password" id="new-pass-input">
+            <div style="display: flex; gap: 10px;">
+                <button onclick="document.getElementById('passwordModal').style.display='none'" style="flex:1; padding:10px; background:#e4e6eb; border:none; border-radius:6px; font-weight:bold;">বাতিল</button>
+                <button onclick="saveNewPassword()" style="flex:1; padding:10px; background:#1877f2; color:white; border:none; border-radius:6px; font-weight:bold;">পরিবর্তন করুন</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="adminChatListModal" class="modal">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 12px; text-align: center; color: #1877f2;">ইউজার চ্যাট লিস্ট</h3>
+            <div id="admin-chat-users-container" style="max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;"></div>
+            <button onclick="document.getElementById('adminChatListModal').style.display='none'" style="width:100%; padding:10px; background:#e4e6eb; border:none; border-radius:6px; font-weight:bold;">বন্ধ করুন</button>
+        </div>
+    </div>
+
+    <div id="editProfileModal" class="modal">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 12px; text-align: center;">প্রোফাইল এডিট করুন</h3>
+            <label style="font-size: 13px; color: #65676b; font-weight: bold;">নাম:</label>
+            <input type="text" id="edit-name-input">
+            <label style="font-size: 13px; color: #65676b; font-weight: bold;">বায়ো (Bio):</label>
+            <textarea id="edit-bio-input" placeholder="আপনার বায়ো লিখুন..." style="height: 60px;"></textarea>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="document.getElementById('editProfileModal').style.display='none'" style="flex:1; padding:10px; background:#e4e6eb; border:none; border-radius:6px; font-weight:bold;">বাতিল</button>
+                <button onclick="saveProfileChanges()" style="flex:1; padding:10px; background:#1877f2; color:white; border:none; border-radius:6px; font-weight:bold;">সেভ করুন</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="postModal" class="modal">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 12px; text-align: center;">পোস্ট তৈরি করুন</h3>
+            <textarea id="post-text" placeholder="মনে কি চলছে বলুন তো..." style="height: 100px;"></textarea>
+            <label class="file-input-label" for="post-image-file"><i class="fa-solid fa-image"></i> ছবি যুক্ত করুন (ঐচ্ছিক)</label>
+            <input type="file" id="post-image-file" accept="image/*" style="display:none;" onchange="previewPostImage(event)">
+            <div id="post-image-preview-container" style="margin-bottom: 12px; max-height: 150px; overflow: hidden; display: none; text-align: center;">
+                <img id="post-image-preview" style="max-width: 100%; max-height: 150px; border-radius: 6px;">
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 5px;">
+                <button onclick="document.getElementById('postModal').style.display='none'" style="flex:1; padding:10px; background:#e4e6eb; border:none; border-radius:6px; font-weight:bold;">বাতিল</button>
+                <button onclick="savePostData()" style="flex:1; padding:10px; background:#1877f2; color:white; border:none; border-radius:6px; font-weight:bold;">পোস্ট করুন</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="storyModal" class="modal">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 12px; text-align: center;">স্টোরি যুক্ত করুন</h3>
+            <label class="file-input-label" for="story-image-file"><i class="fa-solid fa-camera"></i> স্টোরির ছবি আপলোড করুন</label>
+            <input type="file" id="story-image-file" accept="image/*" style="display:none;" onchange="previewStoryImage(event)">
+            <div id="story-image-preview-container" style="margin-bottom: 12px; max-height: 150px; overflow: hidden; display: none; text-align: center;">
+                <img id="story-image-preview" style="max-width: 100%; max-height: 150px; border-radius: 6px;">
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 5px;">
+                <button onclick="document.getElementById('storyModal').style.display='none'" style="flex:1; padding:10px; background:#e4e6eb; border:none; border-radius:6px; font-weight:bold;">বাতিল</button>
+                <button onclick="addStory()" style="flex:1; padding:10px; background:#1877f2; color:white; border:none; border-radius:6px; font-weight:bold;">শেয়ার করুন</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBdagZBOkASYm-CwYkWni5sjOAnvQ2tAVQ",
+            authDomain: "alamin-db2b0.firebaseapp.com",
+            databaseURL: "https://alamin-db2b0-default-rtdb.firebaseio.com",
+            projectId: "alamin-db2b0",
+            storageBucket: "alamin-db2b0.firebasestorage.app",
+            messagingSenderId: "616470738201",
+            appId: "1:616470738201:web:c96bd33c51f4aaf5088188",
+            measurementId: "G-40LCNVCXP7"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        let currentUser = null;
+        let isSignUpMode = false;
+        let viewingProfileUid = null;
+        let activeChatTargetUid = null;
+        let selectedPostImageBase64 = "";
+        let selectedStoryImageBase64 = "";
+
+        const ADMIN_EMAIL = "H>dYBAjCHLCh76r@;0O1@rH2"; 
+
+        const MALE_AVATARS = [
+            "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300",
+            "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300"
+        ];
+        const FEMALE_AVATARS = [
+            "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300",
+            "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300"
+        ];
+        const DEFAULT_COVERS = [
+            "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800"
+        ];
+
+        function getUniqueAvatarByGender(gender, existingAvatars = []) {
+            let pool = (gender === 'female') ? FEMALE_AVATARS : MALE_AVATARS;
+            let available = pool.filter(img => !existingAvatars.includes(img));
+            if (available.length === 0) available = pool;
+            return available[Math.floor(Math.random() * available.length)];
+        }
+
+        function getRandomDefaultCover() {
+            return DEFAULT_COVERS[Math.floor(Math.random() * DEFAULT_COVERS.length)];
+        }
+
+        function updateOnlineStatus() {
+            const offlineNotice = document.getElementById('offline-notice');
+            if (!navigator.onLine) {
+                offlineNotice.style.display = 'block';
+                loadPostsFromLocalStorage();
+            } else {
+                offlineNotice.style.display = 'none';
+            }
+        }
+
+        window.addEventListener('online', updateOnlineStatus);
+        window.addEventListener('offline', updateOnlineStatus);
+
+        window.onload = function() {
+            updateOnlineStatus();
+
+            const savedUser = localStorage.getItem('social_current_user');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                
+                db.ref('users/' + currentUser.uid).once('value', (snapshot) => {
+                    let dbUser = snapshot.val();
+                    let isAdmin = (currentUser.email && currentUser.email === ADMIN_EMAIL);
+
+                    if(dbUser) {
+                        currentUser.role = isAdmin ? 'admin' : (dbUser.role || 'user');
+                        currentUser.verified = isAdmin ? true : (dbUser.verified !== undefined ? dbUser.verified : false);
+                        currentUser.isModerator = dbUser.isModerator || false;
+                        currentUser.name = dbUser.name || currentUser.name;
+                        currentUser.bio = dbUser.bio || currentUser.bio;
+                        currentUser.avatar = dbUser.avatar || getUniqueAvatarByGender('male');
+                        currentUser.cover = dbUser.cover || getRandomDefaultCover();
+                    }
+                    
+                    localStorage.setItem('social_current_user', JSON.stringify(currentUser));
+                    
+                    if (isAdmin || currentUser.isModerator) {
+                        document.getElementById('admin-mod-chat-option').style.display = 'flex';
+                    }
+
+                    const userStatusRef = db.ref('users/' + currentUser.uid + '/status');
+                    db.ref('.info/connected').on('value', (snap) => {
+                        if (snap.val() === true) {
+                            userStatusRef.onDisconnect().set('offline');
+                            userStatusRef.set('online');
+                        }
+                    });
+                });
+
+                document.getElementById('login-section').style.display = 'none';
+                document.getElementById('app-section').style.display = 'block';
+                initRealtimeListeners();
+            } else {
+                document.getElementById('login-section').style.display = 'block';
+                document.getElementById('app-section').style.display = 'none';
+            }
+        };
+
+        // ইউটিউব শর্টস ফিড লোড ফাংশন (লাইক, কমেন্ট, সাবস্ক্রাইব ও শেয়ার ফিচার সহ)
+        function openSettingsShortsModal() {
+            const container = document.getElementById('settings-shorts-list-container');
+            container.innerHTML = '<div style="text-align:center; padding-top:50vh; color:#aaa; font-size:16px;"><i class="fa-solid fa-spinner fa-spin"></i> ইউটিউব শর্টস লোড হচ্ছে...</div>';
+            document.getElementById('settingsShortsModal').style.display = 'flex';
+
+            db.ref('youtube_shorts').once('value', (snapshot) => {
+                let shortsObj = snapshot.val() || {};
+                let shortsList = [];
+                for(let key in shortsObj) {
+                    shortsList.push({ id: key, ...shortsObj[key] });
+                }
+
+                // যদি ডাটাবেজে শর্টস না থাকে তবে ডিফল্ট কিছু শর্টস দেখাবে
+                if(shortsList.length === 0) {
+                    shortsList = [
+                        { id: 's1', ytId: 'dQw4w9WgXcQ', caption: 'মজার শর্টস ভিডিও ১', likes: 120, subscribed: false },
+                        { id: 's2', ytId: 'L_LUpnjgPso', caption: 'ট্রেডিং শর্টস ভিডিও ২', likes: 85, subscribed: false }
+                    ];
+                }
+
+                container.innerHTML = '';
+                shortsList.forEach((shortItem, index) => {
+                    let isLiked = shortItem.isLiked ? true : false;
+                    let isSubscribed = shortItem.isSubscribed ? true : false;
+
+                    container.innerHTML += `
+                        <div style="width: 100vw; height: 100vh; scroll-snap-align: start; scroll-snap-stop: always; position: relative; background: #000; display: flex; align-items: center; justify-content: center;">
+                            <iframe width="100%" height="100%" src="https://www.youtube.com/embed/${shortItem.ytId}?autoplay=${index === 0 ? 1 : 0}&mute=0&loop=1&playlist=${shortItem.ytId}&controls=1&modestbranding=1&playsinline=1" title="YouTube Shorts" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="width: 100%; height: 100%; object-fit: cover;"></iframe>
+                            
+                            <!-- ইউটিউব শর্টস ইন্টারঅ্যাক্টিভ ওভারলে বাটনসমূহ -->
+                            <div style="position: absolute; right: 15px; bottom: 80px; display: flex; flex-direction: column; gap: 20px; align-items: center; z-index: 10;">
+                                <div onclick="toggleShortLike('${shortItem.id}')" style="cursor: pointer; text-align: center; color: white;">
+                                    <div style="background: rgba(0,0,0,0.5); width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 4px;">
+                                        <i class="fa-solid fa-thumbs-up" style="color: ${isLiked ? '#3ea6ff' : '#fff'};"></i>
+                                    </div>
+                                    <span style="font-size: 12px; font-weight: bold;" id="like-count-${shortItem.id}">${shortItem.likes || 0}</span>
+                                </div>
+                                <div onclick="openYtComments('${shortItem.id}')" style="cursor: pointer; text-align: center; color: white;">
+                                    <div style="background: rgba(0,0,0,0.5); width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 4px;">
+                                        <i class="fa-solid fa-comment-dots"></i>
+                                    </div>
+                                    <span style="font-size: 12px; font-weight: bold;">কমেন্ট</span>
+                                </div>
+                                <div onclick="shareShortVideo('${shortItem.ytId}')" style="cursor: pointer; text-align: center; color: white;">
+                                    <div style="background: rgba(0,0,0,0.5); width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 4px;">
+                                        <i class="fa-solid fa-share"></i>
+                                    </div>
+                                    <span style="font-size: 12px; font-weight: bold;">শেয়ার</span>
+                                </div>
+                            </div>
+
+                            <!-- শর্টস ক্যাপশন ও সাবস্ক্রাইব বাটন -->
+                            <div style="position: absolute; left: 15px; bottom: 80px; right: 70px; z-index: 10; color: white; text-shadow: 0 1px 3px rgba(0,0,0,0.8);">
+                                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                                    <div style="width: 35px; height: 35px; border-radius: 50%; background: #ff0000; display: flex; align-items: center; justify-content: center; font-weight: bold;">BC</div>
+                                    <span style="font-weight: bold; font-size: 14px;">BCFS Shorts</span>
+                                    <button onclick="toggleChannelSubscribe(this)" style="background: ${isSubscribed ? '#3a3b3c' : '#ff0000'}; color: white; border: none; padding: 5px 12px; border-radius: 20px; font-weight: bold; font-size: 12px; cursor: pointer;">${isSubscribed ? 'সাবস্ক্রাইবড' : 'সাবস্ক্রাইব'}</button>
+                                </div>
+                                <div style="font-size: 14px;">${shortItem.caption || 'ইউটিউব শর্টস ভিডিও'}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+        }
+
+        function toggleShortLike(shortId) {
+            let countEl = document.getElementById(`like-count-${shortId}`);
+            if(countEl) {
+                let current = parseInt(countEl.innerText) || 0;
+                countEl.innerText = current + 1;
+                alert('ভিডিওটিতে লাইক দেওয়া হয়েছে!');
+            }
+        }
+
+        function openYtComments(shortId) {
+            document.getElementById('ytCommentsModal').style.display = 'flex';
+        }
+
+        function postYtComment() {
+            let input = document.getElementById('yt-comment-input');
+            let text = input.value.trim();
+            if(!text) return;
+            let box = document.getElementById('yt-comments-list-box');
+            box.innerHTML += `<div style="background: #3a3b3c; padding: 6px 10px; border-radius: 8px;"><b>${currentUser ? currentUser.name : 'User'}:</b> ${text}</div>`;
+            input.value = '';
+        }
+
+        function shareShortVideo(ytId) {
+            if (navigator.share) {
+                navigator.share({
+                    title: 'YouTube Shorts',
+                    text: 'এই ইউটিউব শর্টসটি দেখুন!',
+                    url: `https://www.youtube.com/shorts/${ytId}`,
+                }).catch(() => {});
+            } else {
+                alert('শর্টস লিংক কপি করা হয়েছে!');
+            }
+        }
+
+        function toggleChannelSubscribe(btn) {
+            if(btn.innerText === 'সাবস্ক্রাইব') {
+                btn.innerText = 'সাবস্ক্রাইবড';
+                btn.style.background = '#3a3b3c';
+                alert('চ্যানেলটি সাবস্ক্রাইব করা হয়েছে!');
+            } else {
+                btn.innerText = 'সাবস্ক্রাইব';
+                btn.style.background = '#ff0000';
+                alert('সাবস্ক্রাইব বাতিল করা হয়েছে।');
+            }
+        }
+
+        function openCreateShortsModal() {
+            document.getElementById('new-short-id-input').value = '';
+            document.getElementById('new-short-caption-input').value = '';
+            document.getElementById('createShortsModal').style.display = 'flex';
+        }
+
+        function saveNewShortsVideo() {
+            let ytId = document.getElementById('new-short-id-input').value.trim();
+            let caption = document.getElementById('new-short-caption-input').value.trim();
+            if(!ytId) { alert('দয়া করে ইউটিউব ভিডিও আইডি দিন!'); return; }
+
+            let shortId = 'short_' + Date.now();
+            db.ref('youtube_shorts/' + shortId).set({
+                ytId: ytId,
+                caption: caption || 'ইউটিউব শর্ট ভিডিও',
+                likes: 0,
+                timestamp: Date.now()
+            }, () => {
+                alert('শর্টস সফলভাবে আপলোড হয়েছে!');
+                document.getElementById('createShortsModal').style.display = 'none';
+                openSettingsShortsModal();
+            });
+        }
+
+        function openPasswordModal() {
+            document.getElementById('old-pass-input').value = '';
+            document.getElementById('new-pass-input').value = '';
+            document.getElementById('passwordModal').style.display = 'flex';
+        }
+
+        function saveNewPassword() {
+            const oldPass = document.getElementById('old-pass-input').value.trim();
+            const newPass = document.getElementById('new-pass-input').value.trim();
+
+            if(!oldPass || !newPass) {
+                alert('সবগুলো ফিল্ড পূরণ করুন!');
+                return;
+            }
+
+            if(oldPass !== currentUser.password) {
+                alert('পুরাতন পাসওয়ার্ড ভুল হয়েছে!');
+                return;
+            }
+
+            db.ref('users/' + currentUser.uid).update({ password: newPass }, () => {
+                currentUser.password = newPass;
+                localStorage.setItem('social_current_user', JSON.stringify(currentUser));
+                alert('পাসওয়ার্ড সফলভাবে পরিবর্তিত হয়েছে!');
+                document.getElementById('passwordModal').style.display = 'none';
+            });
+        }
+
+        function toggleNotifications() {
+            let el = document.getElementById('notif-status');
+            if(el.innerText === 'চালু') {
+                el.innerText = 'বন্ধ';
+                el.style.color = '#fa383e';
+                alert('নোটিফিকেশন বন্ধ করা হয়েছে।');
+            } else {
+                el.innerText = 'চালু';
+                el.style.color = '#28a745';
+                alert('নোটিফিকেশন চালু করা হয়েছে।');
+            }
+        }
+
+        function togglePrivacy() {
+            let el = document.getElementById('privacy-status');
+            if(el.innerText === 'পাবলিক') {
+                el.innerText = 'প্রাইভেট';
+                el.style.color = '#fa383e';
+                alert('অ্যাকাউন্ট এখন প্রাইভেট মোডে আছে।');
+            } else {
+                el.innerText = 'পাবলিক';
+                el.style.color = '#65676b';
+                alert('অ্যাকাউন্ট এখন পাবলিক মোডে আছে।');
+            }
+        }
+
+        function toggleAuthMode() {
+            isSignUpMode = !isSignUpMode;
+            const nameInput = document.getElementById('auth-name');
+            const genderSelect = document.getElementById('auth-gender');
+            const title = document.getElementById('auth-title');
+            const mainBtn = document.getElementById('auth-main-btn');
+            const switchText = document.getElementById('auth-switch-text');
+
+            if(isSignUpMode) {
+                nameInput.style.display = 'block';
+                genderSelect.style.display = 'block';
+                title.innerText = "BCFS Media - সাইন আপ";
+                mainBtn.innerText = "একাউন্ট তৈরি করুন";
+                switchText.innerHTML = "ইতিমধ্যে একাউন্ট আছে? <span>লগইন করুন</span>";
+            } else {
+                nameInput.style.display = 'none';
+                genderSelect.style.display = 'none';
+                title.innerText = "BCFS Media - লগইন";
+                mainBtn.innerText = "লগইন করুন";
+                switchText.innerHTML = "একাউন্ট নেই? <span>সাইন আপ করুন</span>";
+            }
+        }
+
+        function handleAuthSubmit() {
+            const email = document.getElementById('auth-email').value.trim();
+            const password = document.getElementById('auth-pass').value.trim();
+            const name = document.getElementById('auth-name').value.trim();
+            const gender = document.getElementById('auth-gender').value;
+
+            if(!email || !password) {
+                alert('দয়া করে ইমেল এবং পাসওয়ার্ড দিন!');
+                return;
+            }
+
+            db.ref('users').once('value', (snapshot) => {
+                let allUsers = snapshot.val() || {};
+                let foundKey = null;
+                let foundUserData = null;
+
+                for(let key in allUsers) {
+                    if(allUsers[key].email && allUsers[key].email === email) {
+                        foundKey = key;
+                        foundUserData = allUsers[key];
+                        break;
+                    }
+                }
+
+                let isAdminEmail = (email === ADMIN_EMAIL);
+                let usedAvatars = Object.values(allUsers).map(u => u.avatar).filter(Boolean);
+
+                if(isSignUpMode) {
+                    if(foundKey) {
+                        alert('এই ইমেলের সাথে ইতিমধ্যেই একটি একাউন্ট রয়েছে!');
+                        return;
+                    }
+                    if(!name) { alert('দয়া করে আপনার নাম দিন!'); return; }
+
+                    let userUid = 'user_' + Date.now();
+                    let uniqueAvatar = getUniqueAvatarByGender(gender, usedAvatars);
+
+                    currentUser = {
+                        uid: userUid,
+                        name: name,
+                        email: email,
+                        password: password,
+                        gender: gender,
+                        bio: 'হ্যালো! আমি এই অ্যাপে নতুন যুক্ত হয়েছি.',
+                        role: isAdminEmail ? 'admin' : 'user',
+                        verified: isAdminEmail ? true : false,
+                        isModerator: false,
+                        avatar: uniqueAvatar,
+                        cover: getRandomDefaultCover(),
+                        status: 'online'
+                    };
+
+                    db.ref('users/' + userUid).set(currentUser, (error) => {
+                        if(!error) {
+                            localStorage.setItem('social_current_user', JSON.stringify(currentUser));
+                            location.reload();
+                        }
+                    });
+
+                } else {
+                    if(!foundKey) { alert('এই ইমেল দিয়ে কোনো একাউন্ট পাওয়া যায়নি!'); return; }
+                    if(foundUserData.password && foundUserData.password !== password) { alert('ভুল পাসওয়ার্ড!'); return; }
+
+                    currentUser = {
+                        uid: foundKey,
+                        name: foundUserData.name || "User",
+                        email: email,
+                        password: password,
+                        bio: foundUserData.bio || '',
+                        role: isAdminEmail ? 'admin' : (foundUserData.role || 'user'),
+                        verified: isAdminEmail ? true : (foundUserData.verified !== undefined ? foundUserData.verified : false),
+                        isModerator: foundUserData.isModerator || false,
+                        avatar: foundUserData.avatar || getUniqueAvatarByGender('male'),
+                        cover: foundUserData.cover || getRandomDefaultCover(),
+                        status: 'online'
+                    };
+
+                    db.ref('users/' + foundKey).update({ status: 'online' });
+                    localStorage.setItem('social_current_user', JSON.stringify(currentUser));
+                    location.reload();
+                }
+            });
+        }
+
+        function updateProfileUserBadge(status) {
+            if(!viewingProfileUid) return;
+            let isAdmin = (currentUser && currentUser.email === ADMIN_EMAIL);
+            if(!isAdmin) {
+                alert('শুধুমাত্র অ্যাডমিন ব্লু ব্যাজ পরিবর্তন করতে পারবেন!');
+                return;
+            }
+            db.ref('users/' + viewingProfileUid).update({ verified: status }, () => {
+                alert('ব্লু ব্যাজ আপডেট সফল হয়েছে!');
+                openUserProfile(viewingProfileUid);
+            });
+        }
+
+        function updateProfileUserModerator(status) {
+            if(!viewingProfileUid) return;
+            let isAdmin = (currentUser && currentUser.email === ADMIN_EMAIL);
+            if(!isAdmin) {
+                alert('শুধুমাত্র অ্যাডমিন মডারেটর রোল পরিবর্তন করতে পারবেন!');
+                return;
+            }
+            db.ref('users/' + viewingProfileUid).update({ isModerator: status }, () => {
+                alert('মডারেটর স্ট্যাটাস আপডেট সফল হয়েছে!');
+                openUserProfile(viewingProfileUid);
+            });
+        }
+
+        function logoutUser() {
+            if (currentUser && navigator.onLine) {
+                db.ref('users/' + currentUser.uid).update({ status: 'offline' }, () => {
+                    localStorage.removeItem('social_current_user');
+                    location.reload();
+                });
+            } else {
+                localStorage.removeItem('social_current_user');
+                location.reload();
+            }
+        }
+
+        function openMyProfile() {
+            if(currentUser) openUserProfile(currentUser.uid);
+        }
+
+        function openUserProfile(targetUid) {
+            viewingProfileUid = targetUid;
+            switchTab('tab-profile', null);
+
+            db.ref('users/' + targetUid).once('value', (snap) => {
+                let targetUserData = snap.val() || {};
+                let isTargetAdmin = (targetUserData.email === ADMIN_EMAIL);
+
+                let finalVerified = isTargetAdmin ? true : (targetUserData.verified !== undefined ? targetUserData.verified : false);
+                let finalMod = targetUserData.isModerator || false;
+                let finalName = targetUserData.name || "User";
+                let finalBio = targetUserData.bio || '';
+                let finalAvatar = targetUserData.avatar || getUniqueAvatarByGender('male');
+                let finalCover = targetUserData.cover || getRandomDefaultCover();
+                let finalStatus = targetUserData.status || 'offline';
+
+                document.getElementById('profile-display-name').innerText = finalName;
+                document.getElementById('profile-display-username').innerText = '@' + targetUid;
+                document.getElementById('profile-display-bio').innerText = finalBio;
+                document.getElementById('profile-verified-span').innerHTML = (isTargetAdmin || finalVerified) ? `<i class="fa-solid fa-circle-check verified-badge"></i>` : '';
+                document.getElementById('profile-mod-span').innerHTML = finalMod ? `<span class="mod-badge">MOD</span>` : '';
+                document.getElementById('profile-avatar-container').innerHTML = `<img src="${finalAvatar}">`;
+                document.getElementById('profile-cover-bg').style.backgroundImage = `url('${finalCover}')`;
+
+                const statusDot = document.getElementById('profile-status-dot');
+                const statusLabel = document.getElementById('profile-status-label');
+                if (finalStatus === 'online') {
+                    statusDot.className = "status-dot online";
+                    statusLabel.innerText = "অনলাইন";
+                    statusLabel.style.color = "#31a24c";
+                } else {
+                    statusDot.className = "status-dot offline";
+                    statusLabel.innerText = "অফলাইন";
+                    statusLabel.style.color = "#8a8d91";
+                }
+
+                const actionContainer = document.getElementById('profile-action-buttons-container');
+                if (currentUser && targetUid === currentUser.uid) {
+                    actionContainer.innerHTML = `
+                        <button class="fb-main-btn btn-blue" onclick="openCreateStoryModal()"><i class="fa-solid fa-plus"></i> স্টোরি</button>
+                        <button class="fb-main-btn btn-gray" onclick="openEditProfileModal()"><i class="fa-solid fa-pen"></i> এডিট</button>
+                    `;
+                } else {
+                    actionContainer.innerHTML = `
+                        <button class="fb-main-btn btn-blue" onclick="openPrivateChat('${targetUid}')"><i class="fa-solid fa-message"></i> মেসেজ পাঠান</button>
+                    `;
+                }
+
+                const adminPanel = document.getElementById('admin-control-panel');
+                const uidText = document.getElementById('current-profile-uid-text');
+                let isAdmin = (currentUser && currentUser.email === ADMIN_EMAIL);
+
+                if (isAdmin) {
+                    adminPanel.style.display = 'block';
+                    uidText.innerText = targetUid;
+                } else {
+                    adminPanel.style.display = 'none';
+                }
+
+                db.ref('posts').once('value', (snapshot) => {
+                    let allPostsObj = snapshot.val() || {};
+                    let targetUserPosts = [];
+                    for(let id in allPostsObj) {
+                        let post = allPostsObj[id];
+                        if(post.uid === targetUid) {
+                            targetUserPosts.push(post);
+                        }
+                    }
+                    targetUserPosts.sort((a, b) => b.timestamp - a.timestamp);
+                    renderPostsHTML(targetUserPosts, document.getElementById('feed-profile'));
+                });
+            });
+        }
+
+        function openPrivateChat(targetUid) {
+            activeChatTargetUid = targetUid;
+            switchTab('tab-live-chat', null);
+            
+            db.ref('users/' + targetUid).once('value', (snap) => {
+                let targetUser = snap.val() || {};
+                document.getElementById('chat-header-title').innerText = targetUser.name ? targetUser.name : "প্রাইভেট চ্যাট";
+            });
+
+            loadPrivateMessages();
+        }
+
+        function getChatRoomId(uid1, uid2) {
+            return uid1 < uid2 ? `${uid1}_${uid2}` : `${uid2}_${uid1}`;
+        }
+
+        function loadPrivateMessages() {
+            if (!currentUser || !activeChatTargetUid) return;
+            
+            let chatRoomId = getChatRoomId(currentUser.uid, activeChatTargetUid);
+            const chatList = document.getElementById('chat-messages-list');
+            
+            db.ref('private_chats/' + chatRoomId).on('value', (snapshot) => {
+                let messagesObj = snapshot.val() || {};
+                chatList.innerHTML = '';
+                
+                let hasMessage = false;
+                for (let key in messagesObj) {
+                    hasMessage = true;
+                    let msg = messagesObj[key];
+                    let isSender = (msg.senderUid === currentUser.uid);
+                    let wrapperClass = isSender ? 'chat-bubble-wrapper outgoing' : 'chat-bubble-wrapper incoming';
+                    let bubbleClass = isSender ? 'chat-bubble outgoing' : 'chat-bubble incoming';
+                    
+                    chatList.innerHTML += `
+                        <div class="${wrapperClass}">
+                            <div class="${bubbleClass}">${msg.text}</div>
+                        </div>
+                    `;
+                }
+                
+                if (!hasMessage) {
+                    chatList.innerHTML = `<div style="text-align:center; color:#65676b; margin-top:20px; font-size: 14px;">কথোপকথন শুরু করুন...</div>`;
+                }
+                
+                chatList.scrollTop = chatList.scrollHeight;
+            });
+        }
+
+        function sendLiveMessage() {
+            const input = document.getElementById('chat-message-input');
+            const text = input.value.trim();
+            if (!text || !currentUser || !activeChatTargetUid) return;
+
+            let chatRoomId = getChatRoomId(currentUser.uid, activeChatTargetUid);
+            let msgId = 'msg_' + Date.now();
+            
+            db.ref(`private_chats/${chatRoomId}/${msgId}`).set({
+                senderUid: currentUser.uid,
+                receiverUid: activeChatTargetUid,
+                text: text,
+                timestamp: Date.now()
+            }, () => {
+                input.value = '';
+            });
+        }
+
+        function openAdminModChatList() {
+            const container = document.getElementById('admin-chat-users-container');
+            container.innerHTML = 'লোড হচ্ছে...';
+            document.getElementById('adminChatListModal').style.display = 'flex';
+
+            db.ref('private_chats').once('value', (chatSnap) => {
+                let chatsObj = chatSnap.val() || {};
+                db.ref('users').once('value', (userSnap) => {
+                    let usersObj = userSnap.val() || {};
+                    container.innerHTML = '';
+
+                    let chatRooms = Object.keys(chatsObj);
+                    if(chatRooms.length === 0) {
+                        container.innerHTML = '<div style="text-align:center; color:#65676b;">কোনো চ্যাট পাওয়া যায়নি</div>';
+                        return;
+                    }
+
+                    chatRooms.forEach(room => {
+                        let uids = room.split('_');
+                        let otherUid = uids.find(id => id !== currentUser.uid) || uids[0];
+                        let uInfo = usersObj[otherUid] || { name: 'Unknown User' };
+
+                        container.innerHTML += `
+                            <div style="padding: 10px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; border: 1px solid #dadde1;" onclick="document.getElementById('adminChatListModal').style.display='none'; openPrivateChat('${otherUid}')">
+                                <div><b>${uInfo.name}</b></div>
+                                <div style="font-size: 12px; color: #1877f2; font-weight: bold;">চ্যাট দেখুন</div>
+                            </div>
+                        `;
+                    });
+                });
+            });
+        }
+
+        function openEditProfileModal() {
+            document.getElementById('edit-name-input').value = currentUser.name || "";
+            document.getElementById('edit-bio-input').value = currentUser.bio || "";
+            document.getElementById('editProfileModal').style.display = 'flex';
+        }
+
+        function saveProfileChanges() {
+            const newName = document.getElementById('edit-name-input').value.trim();
+            const newBio = document.getElementById('edit-bio-input').value.trim();
+            if(newName) currentUser.name = newName;
+            currentUser.bio = newBio;
+            db.ref('users/' + currentUser.uid).update({ name: currentUser.name, bio: currentUser.bio });
+            localStorage.setItem('social_current_user', JSON.stringify(currentUser));
+            document.getElementById('editProfileModal').style.display = 'none';
+            openMyProfile();
+        }
+
+        function openCreatePostModal() {
+            document.getElementById('post-text').value = '';
+            selectedPostImageBase64 = "";
+            document.getElementById('post-image-preview-container').style.display = 'none';
+            document.getElementById('postModal').style.display = 'flex';
+        }
+
+        function previewPostImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    selectedPostImageBase64 = e.target.result;
+                    document.getElementById('post-image-preview').src = selectedPostImageBase64;
+                    document.getElementById('post-image-preview-container').style.display = 'block';
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function savePostData() {
+            const text = document.getElementById('post-text').value.trim();
+            if(!text && !selectedPostImageBase64) { alert('দয়া করে কিছু লিখুন অথবা ছবি আপলোড করুন!'); return; }
+            const postId = 'post_' + Date.now();
+            const newPost = {
+                id: postId, uid: currentUser.uid, text: text,
+                image: selectedPostImageBase64 || "",
+                authorName: currentUser.name, authorAvatar: currentUser.avatar,
+                timestamp: Date.now(),
+                reactions: { userReactions: {} },
+                comments: []
+            };
+            db.ref('posts/' + postId).set(newPost, (error) => {
+                if(!error) {
+                    document.getElementById('postModal').style.display = 'none';
+                } else {
+                    alert('পোস্ট সেভ করতে সমস্যা হয়েছে!');
+                }
+            });
+        }
+
+        function openCreateStoryModal() {
+            selectedStoryImageBase64 = "";
+            document.getElementById('story-image-preview-container').style.display = 'none';
+            document.getElementById('storyModal').style.display = 'flex';
+        }
+
+        function previewStoryImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    selectedStoryImageBase64 = e.target.result;
+                    document.getElementById('story-image-preview').src = selectedStoryImageBase64;
+                    document.getElementById('story-image-preview-container').style.display = 'block';
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function addStory() {
+            if(!selectedStoryImageBase64) { alert('দয়া করে স্টোরির ছবি আপলোড করুন!'); return; }
+            const storyId = 'story_' + Date.now();
+            db.ref('stories/' + storyId).set({
+                id: storyId, 
+                uid: currentUser.uid, 
+                image: selectedStoryImageBase64, 
+                authorName: currentUser.name, 
+                timestamp: Date.now()
+            });
+            document.getElementById('storyModal').style.display = 'none';
+        }
+
+        function viewStory(storyId) {
+            db.ref('stories/' + storyId).once('value', (snap) => {
+                let story = snap.val();
+                if(!story) return;
+
+                db.ref('users/' + story.uid).once('value', (userSnap) => {
+                    let uInfo = userSnap.val() || {};
+                    let authorName = uInfo.name || story.authorName || 'User';
+                    let authorAvatar = uInfo.avatar || '';
+
+                    document.getElementById('story-viewer-author-name').innerText = authorName;
+                    document.getElementById('story-viewer-author-avatar').src = authorAvatar;
+                    
+                    let bgImg = document.getElementById('story-viewer-bg-img');
+                    bgImg.style.backgroundImage = `url('${story.image}')`;
+
+                    document.getElementById('story-viewer-user-profile').onclick = function() {
+                        closeStoryViewer();
+                        openUserProfile(story.uid);
+                    };
+
+                    document.getElementById('storyViewerModal').style.display = 'flex';
+                });
+            });
+        }
+
+        function closeStoryViewer() {
+            document.getElementById('storyViewerModal').style.display = 'none';
+        }
+
+        function deletePost(postId) {
+            if(!confirm('পোস্টটি ডিলিট করতে চান?')) return;
+            db.ref('posts/' + postId).remove();
+        }
+
+        function deleteStory(storyId, event) {
+            event.stopPropagation();
+            if(!confirm('এই স্টোরিটি রিমুভ (ডিলিট) করতে চান?')) return;
+            db.ref('stories/' + storyId).remove();
+        }
+
+        function togglePostMenu(postId, event) {
+            event.stopPropagation();
+            const menu = document.getElementById(`post-menu-${postId}`);
+            document.querySelectorAll('.post-menu-dropdown').forEach(m => { if(m.id !== `post-menu-${postId}`) m.style.display = 'none'; });
+            if (menu) menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function toggleReactionsPopup(postId) {
+            const popup = document.getElementById(`reactions-popup-${postId}`);
+            popup.style.display = popup.style.display === 'flex' ? 'none' : 'flex';
+        }
+
+        function reactPost(postId, reactionType) {
+            document.getElementById(`reactions-popup-${postId}`).style.display = 'none';
+            db.ref(`posts/${postId}/reactions/userReactions/${currentUser.uid}`).set(reactionType);
+        }
+
+        function toggleComments(postId) {
+            const section = document.getElementById(`comments-section-${postId}`);
+            section.style.display = section.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function sendComment(postId) {
+            const input = document.getElementById(`comment-input-${postId}`);
+            const text = input.value.trim();
+            if(!text) return;
+
+            db.ref(`posts/${postId}/comments`).once('value', (snapshot) => {
+                let comments = snapshot.val() || [];
+                comments.push({
+                    uid: currentUser.uid,
+                    name: currentUser.name,
+                    text: text,
+                    timestamp: Date.now()
+                });
+                db.ref(`posts/${postId}/comments`).set(comments, () => {
+                    input.value = '';
+                });
+            });
+        }
+
+        function sharePost(postId) {
+            if (navigator.share) {
+                navigator.share({
+                    title: 'BCFS Media Post',
+                    text: 'এই পোস্টটি দেখুন!',
+                    url: window.location.href,
+                }).catch(() => {});
+            } else {
+                alert('লিংক কপি করা হয়েছে!');
+            }
+        }
+
+        window.onclick = function(event) {
+            if (!event.target.matches('.post-menu-btn')) {
+                document.querySelectorAll('.post-menu-dropdown').forEach(m => m.style.display = 'none');
+            }
+            if (!event.target.closest('.action-btn')) {
+                document.querySelectorAll('.reactions-popup').forEach(p => p.style.display = 'none');
+            }
+        };
+
+        function loadStories() {
+            const storiesFeed = document.getElementById('stories-feed');
+            db.ref('stories').on('value', (snapshot) => {
+                let storiesObj = snapshot.val() || {};
+                storiesFeed.innerHTML = `<div class="story-card add-story" onclick="openCreateStoryModal()"><i class="fa-solid fa-plus"></i>স্টোরি দিন</div>`;
+                
+                let isAdmin = (currentUser && currentUser.email === ADMIN_EMAIL);
+                let isMod = (currentUser && (currentUser.isModerator || currentUser.email === ADMIN_EMAIL));
+
+                for(let id in storiesObj) {
+                    let story = storiesObj[id];
+                    let isOwner = (currentUser && story.uid === currentUser.uid);
+                    
+                    let showStoryDelete = isOwner || isAdmin || isMod;
+                    let deleteBtnHtml = showStoryDelete ? `<button class="story-delete-btn" onclick="deleteStory('${id}', event)" title="স্টোরি রিমুভ করুন"><i class="fa-solid fa-xmark"></i></button>` : '';
+
+                    storiesFeed.innerHTML += `
+                        <div class="story-card" style="background-image: url('${story.image}');" onclick="viewStory('${id}')">
+                            ${deleteBtnHtml}
+                            <div class="story-user">${story.authorName}</div>
+                        </div>`;
+                }
+            });
+        }
+
+        function initRealtimeListeners() {
+            const homeAvatarIcon = document.getElementById('home-user-avatar-icon');
+            if (currentUser && currentUser.avatar) {
+                homeAvatarIcon.innerHTML = `<img src="${currentUser.avatar}">`;
+            }
+            db.ref('posts').on('value', (snapshot) => {
+                let postsObj = snapshot.val() || {};
+                let postsToDisplay = [];
+                for(let id in postsObj) postsToDisplay.push(postsObj[id]);
+                postsToDisplay.sort((a, b) => b.timestamp - a.timestamp);
+                
+                localStorage.setItem('cached_social_posts', JSON.stringify(postsToDisplay));
+                renderPostsHTML(postsToDisplay, document.getElementById('feed-home'));
+            });
+            loadStories();
+        }
+
+        function loadPostsFromLocalStorage() {
+            let cachedPosts = JSON.parse(localStorage.getItem('cached_social_posts') || '[]');
+            renderPostsHTML(cachedPosts, document.getElementById('feed-home'));
+        }
+
+        function renderPostsHTML(posts, container) {
+            container.innerHTML = '';
+            if (posts.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding:20px; color:#65676b; background:white;">কোনো পোস্ট নেই</div>';
+                return;
+            }
+
+            db.ref('users').once('value', (userSnap) => {
+                let usersData = userSnap.val() || {};
+                buildPostsUI(posts, usersData, container);
+            }).catch(() => {
+                buildPostsUI(posts, {}, container);
+            });
+        }
+
+        function buildPostsUI(posts, usersData, container) {
+            container.innerHTML = '';
+            posts.forEach(post => {
+                let uInfo = usersData[post.uid] || {};
+                let authorName = uInfo.name || post.authorName || 'User';
+                let authorAvatarStr = uInfo.avatar || post.authorAvatar;
+                let isTargetAdmin = (uInfo.email === ADMIN_EMAIL);
+                let authorVerified = isTargetAdmin ? true : (uInfo.verified || false);
+                let authorStatus = uInfo.status || 'offline';
+
+                let userReactsObj = (post.reactions && post.reactions.userReactions) ? post.reactions.userReactions : {};
+                let totalReactionsCount = Object.keys(userReactsObj).length;
+                let myReaction = currentUser ? userReactsObj[currentUser.uid] : null;
+
+                let commentsList = post.comments || [];
+                let commentsHtml = '';
+                commentsList.forEach(c => {
+                    commentsHtml += `
+                        <div style="margin-bottom: 6px;">
+                            <div class="comment-author" onclick="openUserProfile('${c.uid}')">${c.name}</div>
+                            <div class="comment-item">${c.text}</div>
+                        </div>`;
+                });
+
+                let isOwner = (currentUser && post.uid === currentUser.uid);
+                let isAdmin = (currentUser && currentUser.email === ADMIN_EMAIL);
+                let isMod = (currentUser && (currentUser.isModerator || currentUser.email === ADMIN_EMAIL));
+                
+                let showDelete = isOwner || isAdmin || isMod;
+                let menuHtml = showDelete ? `<div class="post-menu-item delete" onclick="deletePost('${post.id}')"><i class="fa-solid fa-trash"></i> ডিলিট</div>` : '';
+
+                let imageHtml = post.image ? `<div class="post-image-container"><img src="${post.image}"></div>` : '';
+                let textHtml = post.text ? `<div class="post-text">${post.text}</div>` : '';
+                let statusClass = authorStatus === 'online' ? 'online' : 'offline';
+
+                let reactionBtnText = "👍 লাইক";
+                let reactionBtnColor = "#65676b";
+                
+                if(myReaction === 'like') { reactionBtnText = "👍 লাইক"; reactionBtnColor = "#1877f2"; }
+                else if(myReaction === 'love') { reactionBtnText = "❤️ লাভ"; reactionBtnColor = "#e41e3f"; }
+                else if(myReaction === 'care') { reactionBtnText = "🥰 কেয়ার"; reactionBtnColor = "#f7b125"; }
+                else if(myReaction === 'wow') { reactionBtnText = "😯 ওয়াও"; reactionBtnColor = "#f7b125"; }
+                else if(myReaction === 'sad') { reactionBtnText = "😥 দুঃখিত"; reactionBtnColor = "#f7b125"; }
+                else if(myReaction === 'haha') { reactionBtnText = "😂 হাহা"; reactionBtnColor = "#f7b125"; }
+                else if(myReaction === 'angry') { reactionBtnText = "😡 রাগান্বিত"; reactionBtnColor = "#e41e3f"; }
+
+                container.innerHTML += `
+                    <div class="post">
+                        <div class="post-header">
+                            <div class="post-header-left">
+                                <div class="avatar-wrapper" onclick="openUserProfile('${post.uid}')">
+                                    <div class="avatar"><img src="${authorAvatarStr || ''}"></div>
+                                    <div class="status-dot ${statusClass}"></div>
+                                </div>
+                                <div class="post-meta">
+                                    <span class="post-author-name" onclick="openUserProfile('${post.uid}')">${authorName} ${authorVerified ? '<i class="fa-solid fa-circle-check verified-badge"></i>' : ''}</span>
+                                    <span class="post-time">${new Date(post.timestamp).toLocaleDateString()}</span>
+                                </div>
+                            </div>
+                            <div class="post-menu-container">
+                                <button class="post-menu-btn" onclick="togglePostMenu('${post.id}', event)"><i class="fa-solid fa-ellipsis"></i></button>
+                                <div class="post-menu-dropdown" id="post-menu-${post.id}">${menuHtml}</div>
+                            </div>
+                        </div>
+                        ${textHtml}
+                        ${imageHtml}
+                        <div class="post-stats">
+                            <span>👍 ${totalReactionsCount} জন প্রতিক্রিয়া জানিয়েছেন</span>
+                            <span onclick="toggleComments('${post.id}')" style="cursor: pointer;">${commentsList.length} টি কমেন্ট</span>
+                        </div>
+                        <div class="post-actions">
+                            <div class="action-btn" onclick="toggleReactionsPopup('${post.id}')" style="color: ${reactionBtnColor};">
+                                ${reactionBtnText}
+                                <div class="reactions-popup" id="reactions-popup-${post.id}">
+                                    <span class="reaction-icon-opt" onclick="reactPost('${post.id}', 'like')">👍</span>
+                                    <span class="reaction-icon-opt" onclick="reactPost('${post.id}', 'love')">❤️</span>
+                                    <span class="reaction-icon-opt" onclick="reactPost('${post.id}', 'care')">🥰</span>
+                                    <span class="reaction-icon-opt" onclick="reactPost('${post.id}', 'wow')">😯</span>
+                                    <span class="reaction-icon-opt" onclick="reactPost('${post.id}', 'sad')">😥</span>
+                                    <span class="reaction-icon-opt" onclick="reactPost('${post.id}', 'haha')">😂</span>
+                                    <span class="reaction-icon-opt" onclick="reactPost('${post.id}', 'angry')">😡</span>
+                                </div>
+                            </div>
+                            <div class="action-btn" onclick="toggleComments('${post.id}')"><i class="fa-regular fa-comment"></i> কমেন্ট</div>
+                            <div class="action-btn" onclick="sharePost('${post.id}')"><i class="fa-solid fa-share"></i> শেয়ার</div>
+                        </div>
+                        <div class="comments-section" id="comments-section-${post.id}">
+                            <div class="comments-list">${commentsHtml}</div>
+                            <div class="comment-box-row">
+                                <input type="text" class="comment-input" id="comment-input-${post.id}" placeholder="একটি কমেন্ট লিখুন...">
+                                <button class="comment-send-btn" onclick="sendComment('${post.id}')">পাঠান</button>
+                            </div>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        function switchTab(tabId, el) {
+            document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+            document.getElementById(tabId).style.display = 'block';
+            if (tabId !== 'tab-live-chat' && tabId !== 'tab-profile') {
+                document.querySelectorAll('.top-nav-tab').forEach(n => n.classList.remove('active'));
+                if(el) el.classList.add('active');
+            } else if (tabId === 'tab-profile') {
+                document.querySelectorAll('.top-nav-tab').forEach(n => n.classList.remove('active'));
+                document.querySelector('.top-nav-tab:nth-child(2)').classList.add('active');
+            }
+        }
+    </script>
+</body>
+</html>
